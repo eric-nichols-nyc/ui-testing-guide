@@ -26,21 +26,35 @@ jobs:
         with:
           version: 8
 
-      # 4. Install dependencies
+      # 4. Setup caching
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
+            ~/.cache/ms-playwright
+          key: ${{ runner.os }}-pnpm-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-playwright-
+
+      # 5. Install dependencies
       - name: Install dependencies
         run: pnpm install
 
-      # 5. Build Storybook
+      # 6. Build Storybook
       - name: Build Storybook
         run: pnpm build-storybook --quiet
 
-      # 6. Install Playwright browsers
+      # 7. Install Playwright browsers
       - name: Install Playwright
-        run: pnpm exec playwright install --with-deps
+        run: pnpm exec playwright install --with-deps chromium
 
-      # 7. Serve Storybook & run tests
+      # 8. Serve Storybook & run tests
       - name: Run Storybook tests
         run: |
           npx concurrently -k -s first -n "SB,TEST" -c "magenta,blue" \
-            "npx http-server storybook-static --port 6006 --silent" \
-            "npx wait-on tcp:127.0.0.1:6006 && pnpm test-storybook"
+             "npx http-server storybook-static --port 6006 --silent" \
+             "npx wait-on tcp:127.0.0.1:6006 && pnpm test-storybook"
