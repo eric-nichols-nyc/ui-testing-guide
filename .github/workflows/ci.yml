@@ -1,0 +1,46 @@
+name: CI
+
+# When to run this action
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+# The jobs to run
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the code
+      - uses: actions/checkout@v4
+
+      # 2. Setup Node.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3. Install pnpm
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      # 4. Install dependencies
+      - name: Install dependencies
+        run: pnpm install
+
+      # 5. Build Storybook
+      - name: Build Storybook
+        run: pnpm build-storybook --quiet
+
+      # 6. Install Playwright browsers
+      - name: Install Playwright
+        run: npx playwright install --with-deps
+
+      # 7. Serve Storybook & run tests
+      - name: Run Storybook tests
+        run: |
+          npx concurrently -k -s first -n "SB,TEST" -c "magenta,blue" \
+            "npx http-server storybook-static --port 6006 --silent" \
+            "npx wait-on tcp:127.0.0.1:6006 && pnpm test-storybook"
